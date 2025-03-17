@@ -54,11 +54,6 @@ async def run_agent_workflow(
 
     streaming_llm_agents = [*TEAM_MEMBERS, "planner", "coordinator"]
 
-    yield {
-        "event": "start_of_workflow",
-        "data": {"workflow_id": workflow_id, "input": user_input_messages},
-    }
-
     # Reset coordinator cache at the start of each workflow
     global coordinator_cache
     coordinator_cache = []
@@ -94,6 +89,11 @@ async def run_agent_workflow(
         run_id = "" if (event.get("run_id") is None) else str(event["run_id"])
 
         if kind == "on_chain_start" and name in streaming_llm_agents:
+            if name == "planner":
+                yield {
+                    "event": "start_of_workflow",
+                    "data": {"workflow_id": workflow_id, "input": user_input_messages},
+                }
             ydata = {
                 "event": "start_of_agent",
                 "data": {
@@ -200,13 +200,14 @@ async def run_agent_workflow(
             continue
         yield ydata
 
-    yield {
-        "event": "end_of_workflow",
-        "data": {
-            "workflow_id": workflow_id,
-            "messages": [
-                convert_message_to_dict(msg)
-                for msg in data["output"].get("messages", [])
-            ],
-        },
-    }
+    if is_handoff_case:
+        yield {
+            "event": "end_of_workflow",
+            "data": {
+                "workflow_id": workflow_id,
+                "messages": [
+                    convert_message_to_dict(msg)
+                    for msg in data["output"].get("messages", [])
+                ],
+            },
+        }
