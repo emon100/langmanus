@@ -24,7 +24,7 @@ graph = build_graph()
 
 # Cache for coordinator messages
 coordinator_cache = []
-MAX_CACHE_SIZE = 5
+MAX_CACHE_SIZE = 2
 
 
 async def run_agent_workflow(
@@ -139,17 +139,13 @@ async def run_agent_workflow(
             else:
                 # Check if the message is from the coordinator
                 if node == "coordinator":
-                    # Cache coordinator messages
-                    if len(coordinator_cache) < MAX_CACHE_SIZE - 1:
-                        coordinator_cache.append(content)
-                        continue
-
-                    if len(coordinator_cache) == MAX_CACHE_SIZE - 1:
+                    if len(coordinator_cache) < MAX_CACHE_SIZE:
                         coordinator_cache.append(content)
                         cached_content = "".join(coordinator_cache)
-                        cached_content = cached_content.replace("```python", "")
                         if cached_content.startswith("handoff"):
                             is_handoff_case = True
+                            continue
+                        if len(coordinator_cache) < MAX_CACHE_SIZE:
                             continue
                         # Send the cached message
                         ydata = {
@@ -159,8 +155,7 @@ async def run_agent_workflow(
                                 "delta": {"content": cached_content},
                             },
                         }
-
-                    if not is_handoff_case:
+                    elif not is_handoff_case:
                         # For other agents, send the message directly
                         ydata = {
                             "event": "message",
